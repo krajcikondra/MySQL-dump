@@ -24,6 +24,9 @@ class MySQLDump
 		'*' => self::ALL,
 	);
 
+	/** @var TableFilter[]  */
+	private $tableFiltes = array();
+
 	/** @var mysqli */
 	private $connection;
 
@@ -109,6 +112,19 @@ class MySQLDump
 		$this->connection->query('UNLOCK TABLES');
 	}
 
+	private function buildQuery($table)
+	{
+		$delTable = $this->delimite($table);
+		if (isset($this->tableFiltes[$table])) {
+			$filter = $this->tableFiltes[$table];
+			$query = "SELECT * FROM $delTable WHERE " . $filter->getCondition();
+			// nahradit otazniky hodnotama
+			
+		} else {
+			$query = "SELECT * FROM $delTable";
+		}
+		return $this->connection->query($query, MYSQLI_USE_RESULT);
+	}
 
 	/**
 	 * Dumps table to logical file.
@@ -149,7 +165,8 @@ class MySQLDump
 
 
 			$size = 0;
-			$res = $this->connection->query("SELECT * FROM $delTable", MYSQLI_USE_RESULT);
+			$query = $this->buildQuery($table);
+			$res = $this->connection->query($query, MYSQLI_USE_RESULT);
 			while ($row = $res->fetch_assoc()) {
 				$s = '(';
 				foreach ($row as $key => $value) {
@@ -205,6 +222,15 @@ class MySQLDump
 	private function delimite($s)
 	{
 		return '`' . str_replace('`', '``', $s) . '`';
+	}
+
+	/**
+	 * Add table filter
+	 * @param TableFilter $tableFilter
+	 */
+	public function addTableFilter(TableFilter $tableFilter)
+	{
+		$this->tableFiltes[$tableFilter->getTable()] = $tableFilter;
 	}
 
 }
